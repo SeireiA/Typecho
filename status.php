@@ -2,7 +2,7 @@
 /**
  * Server Status
  *
- * @version:1.0.0
+ * @version:1.0.3
  * @author Weifeng
  * https://github.com/acewfdy/Handsome
  * @package custom
@@ -187,11 +187,19 @@ setcookie('client_ip',get_ip());
 	/*
 	 * 获取网站协议
 	 */
-	function get_http_type(){
+	function get_http_type($type){
 		if((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https')){
-			echo 'HTTPS';
+			if($type == 1){
+			    return 'HTTPS';
+			}else{
+				return 'https';
+			}
 		}else{
-			echo 'HTTP';
+			if($type == 1){
+			    return 'HTTP';
+			}else{
+				return 'http';
+			}
 		}
 	}
 
@@ -269,11 +277,12 @@ if(isset($_GET['api'])){
 	exit();
 }
 
-$file_url = $this->fields->file_url;
-$bt_url = $this->fields->bt_url;
-$bt_key = $this->fields->bt_key;
-$ep_url = $this->fields->ep_url;
-$ep_key = $this->fields->ep_key;
+$ajax_time = $this->fields->ajax_time; //数据刷新秒数
+$file_url = $this->fields->file_url; //文件网址
+$bt_url = $this->fields->bt_url; //宝塔地址
+$bt_key = $this->fields->bt_key; //宝塔密匙
+$ep_url = $this->fields->ep_url; //EP地址
+$ep_key = $this->fields->ep_key; //EP密匙
 
 /**
  * $pageset 0为关闭 1为bt 2为ep 3为两个都有
@@ -290,7 +299,13 @@ if(empty($bt_url) && empty($bt_key) && empty($ep_url) && empty($ep_key)) {
     $pageset = 0;
 }
 if(empty($file_url)){
-	$file_url = 'http://wfblog.net/usr/themes/handsome/status.php';
+	$http_type = get_http_type(0);
+	$file_url = $http_type.'://'.$_SERVER['HTTP_HOST'].'/usr/themes/handsome/status.php';
+}
+if(empty($ajax_time)){
+    $ajax_time = '10';
+}elseif($ajax_time < '1'){
+	$ajax_time = '1';
 }
 
 /**
@@ -340,7 +355,7 @@ if($pageset == 1){
         <!--文章-->
         <div class="col center-part">
             <header class="bg-light lter b-b wrapper-md">
-                <h1 class="m-n font-thin h3"><i class="iconfont icon-fork i-sm m-r-sm"></i><?php _me("服务器状态") ?></h1>
+                <h1 class="m-n font-thin h3"><i data-feather="server" class="i-sm m-r-sm"></i><?php _me("服务器状态") ?></h1>
                 <small class="text-muted letterspacing indexWords"><?php echo $this->fields->intro; ?></small>
             </header>
             <div class="wrapper-md" id="post-panel">
@@ -437,7 +452,7 @@ if($pageset == 1){
 	            </div>
 	            <br/>
 	            <div class="">
-	              <span class="pull-right text-default"><span class="badge badge-sm bg-dark"><?php echo get_http_type(); ?></span></span>
+	              <span class="pull-right text-default"><span class="badge badge-sm bg-dark"><?php echo get_http_type(1); ?></span></span>
 	              <span>通信协议名称版本</span>
 	            </div>
 	            <br/>
@@ -462,13 +477,19 @@ if($pageset == 1){
 	            
 	            <div class="">
 	              <span class="pull-right text-default" id="address"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
-	              <span>您的网络地址</span>
+	              <span>您的地址</span>
 	            </div>
 	            <br/>
 	            
 	            <div class="">
-	              <span class="pull-right text-default" id="b"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
+	              <span class="pull-right text-default" id="browser"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
 	              <span>您的浏览器</span>
+	            </div>
+	            <br/>
+	            
+	            <div class="">
+	              <span class="pull-right text-default" id="lang"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
+	              <span>您的语言</span>
 	            </div>
 	            <br/>
 	            
@@ -549,7 +570,7 @@ if($pageset == 1){
     var se_tx;
     var si_rx;
     var si_tx;
-    setInterval(function(){
+	function Pageloader(){
         $.ajax({
             type : "get",
             url : "<?php echo $file_url; ?>?api=server",
@@ -560,7 +581,6 @@ if($pageset == 1){
             },
             success : function(data){
                 if(data != null){
-					console.log(data.bt.network);
                     var cpu = data.bt.system.cpuRealUsed;
                     $("#cpu").html(returnFloat(cpu));
                     $("#cpu_css").css("width",returnFloat(cpu));
@@ -756,16 +776,6 @@ if($pageset == 1){
                         var memBuffers_data_max = floats(memBuffers_max)+"MB";
                     }
                     $("#memBuffers_data").html(memBuffers_data_value+" / "+memBuffers_data_max);
-                }
-            },
-        });
-        $.ajax({
-            type : "get",
-            url : "<?php echo $file_url; ?>?api=server",
-            async : true,
-            dataType:"json",
-            success : function(data){
-                if(data != null){
                     if(floats((data.bt.network.upTotal/1024000))>1000){
                         var aaa_tx = floats((data.bt.network.upTotal/1024000000))+"GB";
                     } else{
@@ -788,7 +798,11 @@ if($pageset == 1){
                 }
             },
         });
-    },1000);
+	};
+	$(function(){
+		Pageloader()
+	});
+    setInterval(function(){Pageloader()},<?php echo $ajax_time; ?>*1000);
     function getNowFormatDate(){
         var date = new Date();
         var seperator1 = "-";
@@ -830,8 +844,9 @@ if($pageset == 1){
                         UserInfo();
                     }else{
                         $("#ip").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.ip+'</span>');
-                        $("#address").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.country+data.ipinfo.region+data.ipinfo.city+'</span>');
-                        $("#b").html('<span class="badge badge-sm bg-dark">'+data.browser+'</span>');
+                        $("#address").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.country+'&nbsp;'+data.ipinfo.region+'&nbsp;'+data.ipinfo.city+'</span>');
+						$("#lang").html('<span class="badge badge-sm bg-dark">'+data.lang+'</span>');
+                        $("#browser").html('<span class="badge badge-sm bg-dark">'+data.browser+'</span>');
                         $("#sys").html('<span class="badge badge-sm bg-dark">'+data.os+'</span>');
                     }
                 }
