@@ -9,7 +9,7 @@
  */
 
 error_reporting(E_ALL ^ E_NOTICE);
-$md5key = 'WeifengNB'; //服务器信息加密密匙，尽量设置复杂
+$md5key = 'WDNMD'; //服务器信息加密密匙，尽量设置复杂
 setcookie('client_ip',get_ip());
 
 /**
