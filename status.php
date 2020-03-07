@@ -9,7 +9,7 @@
  */
 
 error_reporting(E_ALL ^ E_NOTICE);
-$md5key = 'WDNMD'; //服务器信息加密密匙，尽量设置复杂
+$md5key = 'WeifengNB'; //服务器信息加密密匙，尽量设置复杂
 setcookie('client_ip',get_ip());
 
 /**
@@ -157,7 +157,7 @@ setcookie('client_ip',get_ip());
             return 'unknow';
         }
     }
-	/*
+	/**
 	 * 获取访问者IP
 	 */
 	function get_ip() {
@@ -174,7 +174,7 @@ setcookie('client_ip',get_ip());
         }
         return $ip;
     }
-	/*
+	/**
 	 * 更新缓存数据
 	 */
 	function updateData($name,$data){
@@ -184,7 +184,7 @@ setcookie('client_ip',get_ip());
     	fwrite($file, $data);
     	fclose($file);
 	}
-	/*
+	/**
 	 * 获取网站协议
 	 */
 	function get_http_type($type){
@@ -201,6 +201,16 @@ setcookie('client_ip',get_ip());
 				return 'http';
 			}
 		}
+	}
+	/**
+	 * 检测缓存文件夹
+	 */
+	function check_dir(){
+        $dirPath = __DIR__ . '/assets/cache';
+        //检测缓存目录是否存在，不存在则创建
+        if (is_dir($dirPath) == false) {
+            mkdir($dirPath, 0775, true);
+        }
 	}
 
 if(isset($_GET['api'])){
@@ -249,36 +259,65 @@ if(isset($_GET['api'])){
 				    'ep' => $ep_info
                 );
 			}
-            echo json_encode($msg);
         }else{
             $msg = array(
                 'code' => 403,
                 'msg' => '服务器信息未填写，请填写后刷新页面'
             );
-            echo json_encode($msg);
         }
+		echo json_encode($msg);
 	}elseif($api == 'user'){
 		$ip = $_COOKIE['client_ip'];
-		$ip_info = json_decode(file_get_contents('http://ip-api.com/json/'.$ip),true);
-		$info_arr = array(
-		    'os' => get_os(),
-			'browser' => get_browse(),
-			'lang' => get_lang(),
-			'ipinfo' => array(
-			    'ip' => $ip_info['query'],
-				'country' => $ip_info['country'],
-				'region' => $ip_info['regionName'],
-				'city' => $ip_info['city'],
-				'isp' => $ip_info['isp']
-			)
-		);
-		echo json_encode($info_arr);
+		//定义服务器信息保存位置
+        $info_file = __DIR__ . '/assets/cache/'.md5($md5key).'.json';
+        if(file_exists($info_file)){
+            $info_arr = json_decode(file_get_contents($info_file),true);
+			$ip_api = $info_arr['ip_api'];
+			if($ip_api == 'IP.SB'){
+		        $ip_info = json_decode(file_get_contents('https://api.ip.sb/geoip/'.$ip),true);
+		        $ip_info_arr = array(
+				    'ip' => $ip_info['ip'],
+			    	'country' => $ip_info['country'],
+			    	'region' => $ip_info['region'],
+			    	'city' => $ip_info['city'],
+			    	'isp' => $ip_info['isp']
+				);
+			}else{
+				$ip_info = json_decode(file_get_contents('http://ip-api.com/json/'.$ip),true);
+		        $ip_info_arr = array(
+				    'ip' => $ip_info['query'],
+			    	'country' => $ip_info['country'],
+			    	'region' => $ip_info['regionName'],
+			    	'city' => $ip_info['city'],
+			    	'isp' => $ip_info['isp']
+				);
+			}
+		    $msg = array(
+		        'os' => get_os(),
+			    'browser' => get_browse(),
+			    'lang' => get_lang(),
+			    'ipinfo' => array(
+			        'ip' => $ip_info_arr['ip'],
+			    	'country' => $ip_info_arr['country'],
+			    	'region' => $ip_info_arr['region'],
+			    	'city' => $ip_info_arr['city'],
+			    	'isp' => $ip_info_arr['isp']
+			    )
+		    );
+		}else{
+            $msg = array(
+                'code' => 403,
+                'msg' => '服务器信息未填写，请填写后刷新页面'
+            );
+        }
+		echo json_encode($msg);
 	}
 	exit();
 }
 
 $ajax_time = $this->fields->ajax_time; //数据刷新秒数
 $file_url = $this->fields->file_url; //文件网址
+$ip_api = $this->fields->ip_api; //获取IP信息的API
 $bt_url = $this->fields->bt_url; //宝塔地址
 $bt_key = $this->fields->bt_key; //宝塔密匙
 $ep_url = $this->fields->ep_url; //EP地址
@@ -314,25 +353,31 @@ if(empty($ajax_time)){
 if($pageset == 1){
     $info_arr = array(
 	    'show' => 1,
+		'ip_api' => $ip_api,
         'bt_url' => $bt_url,
         'bt_key' => $bt_key
     );
+	check_dir();
     updateData(md5($md5key).'.json',json_encode($info_arr));
 }elseif($pageset == 2){
     $info_arr = array(
 	    'show' => 2,
+		'ip_api' => $ip_api,
         'ep_url' => $ep_url,
         'ep_key' => $ep_key
     );
+	check_dir();
     updateData(md5($md5key).'.json',json_encode($info_arr));
 }elseif($pageset == 3){
     $info_arr = array(
 	    'show' => 3,
+		'ip_api' => $ip_api,
         'bt_url' => $bt_url,
         'bt_key' => $bt_key,
         'ep_url' => $ep_url,
         'ep_key' => $ep_key
     );
+	check_dir();
 	updateData(md5($md5key).'.json',json_encode($info_arr));
 }
 ?>
@@ -478,6 +523,12 @@ if($pageset == 1){
 	            <div class="">
 	              <span class="pull-right text-default" id="address"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
 	              <span>您的地址</span>
+	            </div>
+	            <br/>
+	            
+	            <div class="">
+	              <span class="pull-right text-default" id="isp"><i class="fa fa-spinner fa-spin" aria-hidden="true"></i></span>
+	              <span>您的ISP</span>
 	            </div>
 	            <br/>
 	            
@@ -842,12 +893,15 @@ if($pageset == 1){
                         UserInfo();
                     }else if(data.ipinfo.city==null){
                         UserInfo();
+                    }else if(data.ipinfo.isp==null){
+                        UserInfo();
                     }else{
                         $("#ip").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.ip+'</span>');
                         $("#address").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.country+'&nbsp;'+data.ipinfo.region+'&nbsp;'+data.ipinfo.city+'</span>');
 						$("#lang").html('<span class="badge badge-sm bg-dark">'+data.lang+'</span>');
                         $("#browser").html('<span class="badge badge-sm bg-dark">'+data.browser+'</span>');
                         $("#sys").html('<span class="badge badge-sm bg-dark">'+data.os+'</span>');
+                        $("#isp").html('<span class="badge badge-sm bg-dark">'+data.ipinfo.isp+'</span>');
                     }
                 }
             },
