@@ -2,7 +2,7 @@
 /**
  * Server Status
  *
- * @version:1.0.3
+ * @version:1.0.4
  * @author Weifeng
  * https://github.com/acewfdy/Handsome
  * @package custom
