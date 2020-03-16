@@ -882,7 +882,7 @@ if($pageset == 1){
 	};
 	$(function(){
 		Pageloader();
-		Swal.fire({allowOutsideClick:true,imageUrl:'https://ae01.alicdn.com/kf/U05ed7e65d7a749a29bd6164f9d4abe84w.gif',title:"与服务器通讯中...",showConfirmButton:false,timer:3000});
+		Swal.fire({allowOutsideClick:false,imageUrl:'https://ae01.alicdn.com/kf/U05ed7e65d7a749a29bd6164f9d4abe84w.gif',title:"与服务器通讯中...",showConfirmButton:true,timer:0});
 	});
     function getNowFormatDate(){
         var date = new Date();
