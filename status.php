@@ -1,8 +1,8 @@
 <?php
 /**
- * Server Status
+ * 服务器状态
  *
- * @version:1.0.4
+ * @version:1.0.5
  * @author Weifeng
  * https://github.com/acewfdy/Handsome
  * @package custom
@@ -15,6 +15,22 @@ setcookie('client_ip',get_ip());
 /**
  * BT 或 EP 的函数
  */
+    /**
+	 * BT
+	 * 检测服务器通讯
+	 */
+	function bt_check($bt_url,$bt_key){
+		$url = $bt_url.'/system?action=GetSystemTotal';
+        $p_data = bt_token($bt_key);
+        $result = bt_get($url,$p_data,60,$bt_url);
+        $data = json_decode($result,true);
+		if(isset($data['status']) && $data['status'] == false){
+			$msg = array('status' => false,'msg' => $data['msg']);
+		}else{
+			$msg = array('status' => 200,'msg' => '成功');
+		}
+        return $msg;
+	}
     /**
      * BT
      * 获取系统基础统计
@@ -220,48 +236,53 @@ if(isset($_GET['api'])){
         $info_file = __DIR__ . '/assets/cache/'.md5($md5key).'.json';
         if(file_exists($info_file)){
             $info_arr = json_decode(file_get_contents($info_file),true);
-            $bt_system = bt_system($info_arr['bt_url'],$info_arr['bt_key']);
-            $bt_disk = bt_disk($info_arr['bt_url'],$info_arr['bt_key']);
-            $bt_network = bt_network($info_arr['bt_url'],$info_arr['bt_key']);
-			if($info_arr['show'] == 1){
-				$bt_disk_arr = $bt_disk[0]['size'];
-				unset($bt_disk['size']);
-				$bt_disk['size'] = array(
-				    'diskTotal' => $bt_disk_arr[0],
-				    'diskUsed' => $bt_disk_arr[1],
-				    'diskFree' => $bt_disk_arr[2],
-				    'diskPercent' => $bt_disk_arr[3]
-					);
-			    $msg = array(
-                    'code' => 200,
-                    'msg' => '获取成功',
-				    'show' => 1,
-				    'bt' => array(
-					    'system' => $bt_system,
-					    'disk' => $bt_disk,
-					    'network' => $bt_network
-						),
-					'now' => date("h:i:sa")
-                );
-			}elseif($info_arr['show'] == 2){
-			    $msg = array(
-                    'code' => 200,
-                    'msg' => '获取成功',
-				    'show' => 2,
-				    'ep' => $ep_info
-                );
-			}elseif($info_arr['show'] == 3){
-				$msg = array(
-                    'code' => 200,
-                    'msg' => '获取成功',
-				    'show' => 2,
-					'bt' => $bt_info,
-				    'ep' => $ep_info
-                );
+			$bt_check = bt_check($info_arr['bt_url'],$info_arr['bt_key']);
+			if($bt_check['status'] == 200){
+                $bt_system = bt_system($info_arr['bt_url'],$info_arr['bt_key']);
+                $bt_disk = bt_disk($info_arr['bt_url'],$info_arr['bt_key']);
+                $bt_network = bt_network($info_arr['bt_url'],$info_arr['bt_key']);
+			    if($info_arr['show'] == 1){
+			    	$bt_disk_arr = $bt_disk[0]['size'];
+				    unset($bt_disk['size']);
+				    $bt_disk['size'] = array(
+				        'diskTotal' => $bt_disk_arr[0],
+				        'diskUsed' => $bt_disk_arr[1],
+				        'diskFree' => $bt_disk_arr[2],
+				        'diskPercent' => $bt_disk_arr[3]
+					    );
+			        $msg = array(
+                        'status' => 200,
+                        'msg' => '获取成功',
+				        'show' => 1,
+				        'bt' => array(
+					        'system' => $bt_system,
+					        'disk' => $bt_disk,
+					        'network' => $bt_network
+						    ),
+					    'now' => date("h:i:sa")
+                    );
+			    }elseif($info_arr['show'] == 2){
+			        $msg = array(
+                        'status' => 200,
+                        'msg' => '获取成功',
+				        'show' => 2,
+				        'ep' => $ep_info
+                    );
+			    }elseif($info_arr['show'] == 3){
+				    $msg = array(
+                        'status' => 200,
+                        'msg' => '获取成功',
+				        'show' => 2,
+					    'bt' => $bt_info,
+				        'ep' => $ep_info
+                    );
+			    }
+		    }else{
+				$msg = $bt_check;
 			}
         }else{
             $msg = array(
-                'code' => 403,
+                'status' => 403,
                 'msg' => '服务器信息未填写，请填写后刷新页面'
             );
         }
@@ -306,7 +327,7 @@ if(isset($_GET['api'])){
 		    );
 		}else{
             $msg = array(
-                'code' => 403,
+                'status' => 403,
                 'msg' => '服务器信息未填写，请填写后刷新页面'
             );
         }
@@ -317,6 +338,7 @@ if(isset($_GET['api'])){
 
 $ajax_time = $this->fields->ajax_time; //数据刷新秒数
 $file_url = $this->fields->file_url; //文件网址
+$sweet_js = $this->fields->sweet_js; //是否调用sweetalertjs
 $ip_api = $this->fields->ip_api; //获取IP信息的API
 $bt_url = $this->fields->bt_url; //宝塔地址
 $bt_key = $this->fields->bt_key; //宝塔密匙
@@ -386,6 +408,9 @@ if($pageset == 1){
 
 <?php if($lazyload == "1"):?>
     <script src="https://cdn.bootcss.com/lazyloadjs/3.2.2/lazyload.min.js"></script>
+<?php endif; ?>
+<?php if($sweet_js == "0" || empty($sweet_js)):?>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@8"></script>
 <?php endif; ?>
 
 
@@ -631,229 +656,234 @@ if($pageset == 1){
                 $("#cpu").html("Error");
             },
             success : function(data){
-                if(data != null){
-                    var cpu = data.bt.system.cpuRealUsed;
-                    $("#cpu").html(returnFloat(cpu));
-                    $("#cpu_css").css("width",returnFloat(cpu));
-                    if(cpu<70){
-                        $("#cpu_css").removeClass();
-                        $("#cpu_css").addClass("progress-bar bg-success");
-                        $("#cpu").removeClass();
-                        $("#cpu").addClass("pull-right text-success");
-                    }
-                    if(cpu>=70){
-                        $("#cpu_css").removeClass();
-                        $("#cpu_css").addClass("progress-bar bg-warning");
-                        $("#cpu").removeClass();
-                        $("#cpu").addClass("pull-right text-warning");
-                    }
-                    if(cpu>=90){
-                        $("#cpu_css").removeClass();
-                        $("#cpu_css").addClass("progress-bar bg-danger");
-                        $("#cpu").removeClass();
-                        $("#cpu").addClass("pull-right text-danger");
-                    }
+                if(data != null ){
+					if(data.status == 200){
+                        var cpu = data.bt.system.cpuRealUsed;
+                        $("#cpu").html(returnFloat(cpu));
+                        $("#cpu_css").css("width",returnFloat(cpu));
+                        if(cpu<70){
+                            $("#cpu_css").removeClass();
+                            $("#cpu_css").addClass("progress-bar bg-success");
+                            $("#cpu").removeClass();
+                            $("#cpu").addClass("pull-right text-success");
+                        }
+                        if(cpu>=70){
+                            $("#cpu_css").removeClass();
+                            $("#cpu_css").addClass("progress-bar bg-warning");
+                            $("#cpu").removeClass();
+                            $("#cpu").addClass("pull-right text-warning");
+                        }
+                        if(cpu>=90){
+                            $("#cpu_css").removeClass();
+                            $("#cpu_css").addClass("progress-bar bg-danger");
+                            $("#cpu").removeClass();
+                            $("#cpu").addClass("pull-right text-danger");
+                        }
 
-                    var memory_value = data.bt.system.memRealUsed;
-                    var memory_max = data.bt.system.memTotal;
-                    $("#memory").html(getPercent(memory_value,memory_max,memory_value));
-                    $("#memory_css").css("width",getPercent(memory_value,memory_max,memory_value));
-                    var me = getPercents(memory_value,memory_max,memory_value);
-                    if(me != "Error"){
-                        if(me<70){
-                            $("#memory_css").removeClass();
-                            $("#memory_css").addClass("progress-bar bg-success");
-                            $("#memory").removeClass();
-                            $("#memory").addClass("pull-right text-success");
+                        var memory_value = data.bt.system.memRealUsed;
+                        var memory_max = data.bt.system.memTotal;
+                        $("#memory").html(getPercent(memory_value,memory_max,memory_value));
+                        $("#memory_css").css("width",getPercent(memory_value,memory_max,memory_value));
+                        var me = getPercents(memory_value,memory_max,memory_value);
+                        if(me != "Error"){
+                            if(me<70){
+                                $("#memory_css").removeClass();
+                                $("#memory_css").addClass("progress-bar bg-success");
+                                $("#memory").removeClass();
+                                $("#memory").addClass("pull-right text-success");
+                            }
+                            if(me>=70){
+                                $("#memory_css").removeClass();
+                                $("#memory_css").addClass("progress-bar bg-warning");
+                                $("#memory").removeClass();
+                                $("#memory").addClass("pull-right text-warning");
+                            }
+                            if(me>=90){
+                                $("#memory_css").removeClass();
+                                $("#memory_css").addClass("progress-bar bg-danger");
+                                $("#memory").removeClass();
+                                $("#memory").addClass("pull-right text-danger");
+                            }
                         }
-                        if(me>=70){
-                            $("#memory_css").removeClass();
-                            $("#memory_css").addClass("progress-bar bg-warning");
-                            $("#memory").removeClass();
-                            $("#memory").addClass("pull-right text-warning");
+                        if(floats((memory_value/1024000))>1000){
+                            var memory_data_value = floats(memory_value)+"GB";
+                        } else{
+                            var memory_data_value = floats(memory_value)+"MB";
                         }
-                        if(me>=90){
-                            $("#memory_css").removeClass();
-                            $("#memory_css").addClass("progress-bar bg-danger");
-                            $("#memory").removeClass();
-                            $("#memory").addClass("pull-right text-danger");
+                        if(floats((memory_max/1024000))>1000){
+                            var memory_data_max = memory_max+"GB";
+                        } else{
+                            var memory_data_max = memory_max+"MB";
                         }
-                    }
-                    if(floats((memory_value/1024000))>1000){
-                        var memory_data_value = floats(memory_value)+"GB";
-                    } else{
-                        var memory_data_value = floats(memory_value)+"MB";
-                    }
-                    if(floats((memory_max/1024000))>1000){
-                        var memory_data_max = memory_max+"GB";
-                    } else{
-                        var memory_data_max = memory_max+"MB";
-                    }
-                    $("#memory_data").html(memory_data_value+" / "+memory_data_max);
+                        $("#memory_data").html(memory_data_value+" / "+memory_data_max);
 
-                    $("#time_span").html('<span class="badge badge-sm bg-dark">'+data.now+'</span>');
+                        $("#time_span").html('<span class="badge badge-sm bg-dark">'+data.now+'</span>');
 					
-					$("#os_span").html('<span class="badge badge-sm bg-dark">'+data.bt.system.system+'</span>');
+					    $("#os_span").html('<span class="badge badge-sm bg-dark">'+data.bt.system.system+'</span>');
 
-                    $("#uptime_span").html('<span class="badge badge-sm bg-dark">'+data.bt.system.time+'</span>');
+                        $("#uptime_span").html('<span class="badge badge-sm bg-dark">'+data.bt.system.time+'</span>');
 
-                    var disk_value = data.bt.disk.size.diskUsed;
-                    var disk_max = data.bt.disk.size.diskTotal;
-                    $("#disk").html(data.bt.disk.size.diskPercent);
-                    $("#disk_css").css("width",data.bt.disk.size.diskPercent);
-                    var dk = parseFloat(data.bt.disk.size.diskPercent);
-                    if(dk != "Error"){
-                        if(dk<70){
-                            $("#disk_css").removeClass();
-                            $("#disk_css").addClass("progress-bar bg-success");
-                            $("#disk").removeClass();
-                            $("#disk").addClass("pull-right text-success");
+                        var disk_value = data.bt.disk.size.diskUsed;
+                        var disk_max = data.bt.disk.size.diskTotal;
+                        $("#disk").html(data.bt.disk.size.diskPercent);
+                        $("#disk_css").css("width",data.bt.disk.size.diskPercent);
+                        var dk = parseFloat(data.bt.disk.size.diskPercent);
+                        if(dk != "Error"){
+                            if(dk<70){
+                                $("#disk_css").removeClass();
+                                $("#disk_css").addClass("progress-bar bg-success");
+                                $("#disk").removeClass();
+                                $("#disk").addClass("pull-right text-success");
+                            }
+                            if(dk>=70){
+                                $("#disk_css").removeClass();
+                                $("#disk_css").addClass("progress-bar bg-warning");
+                                $("#disk").removeClass();
+                                $("#disk").addClass("pull-right text-warning");
+                            }
+                            if(dk>=90){
+                                $("#disk_css").removeClass();
+                                $("#disk_css").addClass("progress-bar bg-danger");
+                                $("#disk").removeClass();
+                                $("#disk").addClass("pull-right text-danger");
+                            }
                         }
-                        if(dk>=70){
-                            $("#disk_css").removeClass();
-                            $("#disk_css").addClass("progress-bar bg-warning");
-                            $("#disk").removeClass();
-                            $("#disk").addClass("pull-right text-warning");
-                        }
-                        if(dk>=90){
-                            $("#disk_css").removeClass();
-                            $("#disk_css").addClass("progress-bar bg-danger");
-                            $("#disk").removeClass();
-                            $("#disk").addClass("pull-right text-danger");
-                        }
-                    }
-                    var disk_data_value = disk_value+"B";
-                    var disk_data_max = disk_max+"B";
-                    $("#disk_data").html(disk_data_value+" / "+disk_data_max);
+                        var disk_data_value = disk_value+"B";
+                        var disk_data_max = disk_max+"B";
+                        $("#disk_data").html(disk_data_value+" / "+disk_data_max);
 
 
-                    var state = '<span class="badge badge-sm bg-dark">'+data.bt.network.load.one+'</span>&nbsp;<span class="badge badge-sm bg-dark">'+data.bt.network.load.five+'</span>&nbsp;<span class="badge badge-sm bg-dark">'+data.bt.network.load.fifteen+'</span>'
-                    $("#state").html(state);
-                    var state_s = getPercent(data.bt.network.load.one,data.bt.network.load.max,data.bt.network.load.one);
-                    $("#state_css").css("width",state_s);
-                    $("#state_s").html(state_s);
-                    var sta = getPercents(data.bt.network.load.one,data.bt.network.load.max,data.bt.network.load.one);
-                    if(sta != "Error"){
-                        if(sta<70){
-                            $("#state_css").removeClass();
-                            $("#state_css").addClass("progress-bar bg-success");
-                            $("#state_s").removeClass();
-                            $("#state_s").addClass("pull-right text-success");
+                        var state = '<span class="badge badge-sm bg-dark">'+data.bt.network.load.one+'</span>&nbsp;<span class="badge badge-sm bg-dark">'+data.bt.network.load.five+'</span>&nbsp;<span class="badge badge-sm bg-dark">'+data.bt.network.load.fifteen+'</span>'
+                        $("#state").html(state);
+                        var state_s = getPercent(data.bt.network.load.one,data.bt.network.load.max,data.bt.network.load.one);
+                        $("#state_css").css("width",state_s);
+                        $("#state_s").html(state_s);
+                        var sta = getPercents(data.bt.network.load.one,data.bt.network.load.max,data.bt.network.load.one);
+                        if(sta != "Error"){
+                            if(sta<70){
+                                $("#state_css").removeClass();
+                                $("#state_css").addClass("progress-bar bg-success");
+                                $("#state_s").removeClass();
+                                $("#state_s").addClass("pull-right text-success");
+                            }
+                            if(sta>=70){
+                                $("#state_css").removeClass();
+                                $("#state_css").addClass("progress-bar bg-warning");
+                                $("#state_s").removeClass();
+                                $("#state_s").addClass("pull-right text-warning");
+                            }
+                            if(sta>=90){
+                                $("#state_css").removeClass();
+                                $("#state_css").addClass("progress-bar bg-danger");
+                                $("#state_s").removeClass();
+                                $("#state_s").addClass("pull-right text-danger");
+                            }
                         }
-                        if(sta>=70){
-                            $("#state_css").removeClass();
-                            $("#state_css").addClass("progress-bar bg-warning");
-                            $("#state_s").removeClass();
-                            $("#state_s").addClass("pull-right text-warning");
-                        }
-                        if(sta>=90){
-                            $("#state_css").removeClass();
-                            $("#state_css").addClass("progress-bar bg-danger");
-                            $("#state_s").removeClass();
-                            $("#state_s").addClass("pull-right text-danger");
-                        }
-                    }
 
-                    var memCached_value = data.bt.network.mem.memCached;
-                    var memCached_max = data.bt.network.mem.memTotal;
-                    $("#memCached").html(getPercent(memCached_value,memCached_max,memCached_value));
-                    $("#memCached_css").css("width",getPercent(memCached_value,memCached_max,memCached_value));
-                    var mem = getPercents(memCached_value,memCached_max,memCached_value);
-                    if(mem != "Error"){
-                        if(mem<70){
-                            $("#memCached_css").removeClass();
-                            $("#memCached_css").addClass("progress-bar bg-success");
-                            $("#memCached").removeClass();
-                            $("#memCached").addClass("pull-right text-success");
+                        var memCached_value = data.bt.network.mem.memCached;
+                        var memCached_max = data.bt.network.mem.memTotal;
+                        $("#memCached").html(getPercent(memCached_value,memCached_max,memCached_value));
+                        $("#memCached_css").css("width",getPercent(memCached_value,memCached_max,memCached_value));
+                        var mem = getPercents(memCached_value,memCached_max,memCached_value);
+                        if(mem != "Error"){
+                            if(mem<70){
+                                $("#memCached_css").removeClass();
+                                $("#memCached_css").addClass("progress-bar bg-success");
+                                $("#memCached").removeClass();
+                                $("#memCached").addClass("pull-right text-success");
+                            }
+                            if(mem>=70){
+                                $("#memCached_css").removeClass();
+                                $("#memCached_css").addClass("progress-bar bg-warning");
+                                $("#memCached").removeClass();
+                                $("#memCached").addClass("pull-right text-warning");
+                            }
+                            if(mem>=90){
+                                $("#memCached_css").removeClass();
+                                $("#memCached_css").addClass("progress-bar bg-danger");
+                                $("#memCached").removeClass();
+                                $("#memCached").addClass("pull-right text-danger");
+                            }
                         }
-                        if(mem>=70){
-                            $("#memCached_css").removeClass();
-                            $("#memCached_css").addClass("progress-bar bg-warning");
-                            $("#memCached").removeClass();
-                            $("#memCached").addClass("pull-right text-warning");
+                        if(floats((memCached_value/1024000))>1000){
+                            var memCached_data_value = floats(memCached_value)+"GB";
+                        } else{
+                            var memCached_data_value = floats(memCached_value)+"MB";
                         }
-                        if(mem>=90){
-                            $("#memCached_css").removeClass();
-                            $("#memCached_css").addClass("progress-bar bg-danger");
-                            $("#memCached").removeClass();
-                            $("#memCached").addClass("pull-right text-danger");
+                        if(floats((memCached_max/1024000))>1000){
+                            var memCached_data_max = floats(memCached_max)+"GB";
+                        } else{
+                            var memCached_data_max = floats(memCached_max)+"MB";
                         }
-                    }
-                    if(floats((memCached_value/1024000))>1000){
-                        var memCached_data_value = floats(memCached_value)+"GB";
-                    } else{
-                        var memCached_data_value = floats(memCached_value)+"MB";
-                    }
-                    if(floats((memCached_max/1024000))>1000){
-                        var memCached_data_max = floats(memCached_max)+"GB";
-                    } else{
-                        var memCached_data_max = floats(memCached_max)+"MB";
-                    }
-                    $("#memCached_data").html(memCached_data_value+" / "+memCached_data_max);
+                        $("#memCached_data").html(memCached_data_value);
 
-                    var memBuffers_value = data.bt.network.mem.memBuffers;
-                    var memBuffers_max = data.bt.network.mem.memTotal;
-                    $("#memBuffers").html(getPercent(memBuffers_value,memBuffers_max,memBuffers_value));
-                    $("#memBuffers_css").css("width",getPercent(memBuffers_value,memBuffers_max,memBuffers_value));
-                    var memB = getPercents(memCached_value,memCached_max,memCached_value);
-                    if(memB != "Error"){
-                        if(memB<70){
-                            $("#memBuffers_css").removeClass();
-                            $("#memBuffers_css").addClass("progress-bar bg-success");
-                            $("#memBuffers").removeClass();
-                            $("#memBuffers").addClass("pull-right text-success");
+                        var memBuffers_value = data.bt.network.mem.memBuffers;
+                        var memBuffers_max = data.bt.network.mem.memTotal;
+                        $("#memBuffers").html(getPercent(memBuffers_value,memBuffers_max,memBuffers_value));
+                        $("#memBuffers_css").css("width",getPercent(memBuffers_value,memBuffers_max,memBuffers_value));
+                        var memB = getPercents(memCached_value,memCached_max,memCached_value);
+                        if(memB != "Error"){
+                            if(memB<70){
+                                $("#memBuffers_css").removeClass();
+                                $("#memBuffers_css").addClass("progress-bar bg-success");
+                                $("#memBuffers").removeClass();
+                                $("#memBuffers").addClass("pull-right text-success");
+                            }
+                            if(memB>=70){
+                                $("#memBuffers_css").removeClass();
+                                $("#memBuffers_css").addClass("progress-bar bg-warning");
+                                $("#memBuffers").removeClass();
+                                $("#memBuffers").addClass("pull-right text-warning");
+                            }
+                            if(memB>=90){
+                                $("#memBuffers_css").removeClass();
+                                $("#memBuffers_css").addClass("progress-bar bg-danger");
+                                $("#memBuffers").removeClass();
+                                $("#memBuffers").addClass("pull-right text-danger");
+                            }
                         }
-                        if(memB>=70){
-                            $("#memBuffers_css").removeClass();
-                            $("#memBuffers_css").addClass("progress-bar bg-warning");
-                            $("#memBuffers").removeClass();
-                            $("#memBuffers").addClass("pull-right text-warning");
+                        if(floats((memBuffers_value/1024000))>1000){
+                            var memBuffers_data_value = floats(memBuffers_value)+"GB";
+                        } else{
+                            var memBuffers_data_value = floats(memBuffers_value)+"MB";
                         }
-                        if(memB>=90){
-                            $("#memBuffers_css").removeClass();
-                            $("#memBuffers_css").addClass("progress-bar bg-danger");
-                            $("#memBuffers").removeClass();
-                            $("#memBuffers").addClass("pull-right text-danger");
+                        if(floats((memBuffers_max/1024000))>1000){
+                            var memBuffers_data_max = floats(memBuffers_max)+"GB";
+                        } else{
+                            var memBuffers_data_max = floats(memBuffers_max)+"MB";
                         }
-                    }
-                    if(floats((memBuffers_value/1024000))>1000){
-                        var memBuffers_data_value = floats(memBuffers_value)+"GB";
-                    } else{
-                        var memBuffers_data_value = floats(memBuffers_value)+"MB";
-                    }
-                    if(floats((memBuffers_max/1024000))>1000){
-                        var memBuffers_data_max = floats(memBuffers_max)+"GB";
-                    } else{
-                        var memBuffers_data_max = floats(memBuffers_max)+"MB";
-                    }
-                    $("#memBuffers_data").html(memBuffers_data_value+" / "+memBuffers_data_max);
-                    if(floats((data.bt.network.upTotal/1024000))>1000){
-                        var aaa_tx = floats((data.bt.network.upTotal/1024000000))+"GB";
-                    } else{
-                        var aaa_tx = floats((data.bt.network.upTotal/1024000))+"MB";
-                    }
-                    if(floats((data.bt.network['downTotal']/1024000))>1000){
-                        var aaa_rx = floats((data.bt.network.downTotal/1024000000))+"GB";
-                    } else{
-                        var aaa_rx = floats((data.bt.network.downTotal/1024000))+"MB";
-                    }
-                    $("#eth1").html('<span class="badge badge-sm bg-dark"><i class="fa fa-cloud-upload" aria-hidden="true"></i>&nbsp;'+ForDight(data.bt.network.upTotal-se_tx,3)+'</span>&nbsp;'+
+                        $("#memBuffers_data").html(memBuffers_data_value);
+                        if(floats((data.bt.network.upTotal/1024000))>1000){
+                            var aaa_tx = floats((data.bt.network.upTotal/1024000000))+"GB";
+                        } else{
+                            var aaa_tx = floats((data.bt.network.upTotal/1024000))+"MB";
+                        }
+                        if(floats((data.bt.network['downTotal']/1024000))>1000){
+                            var aaa_rx = floats((data.bt.network.downTotal/1024000000))+"GB";
+                        } else{
+                            var aaa_rx = floats((data.bt.network.downTotal/1024000))+"MB";
+                        }
+                        $("#eth1").html('<span class="badge badge-sm bg-dark"><i class="fa fa-cloud-upload" aria-hidden="true"></i>&nbsp;'+ForDight(data.bt.network.upTotal-se_tx,3)+'</span>&nbsp;'+
                         '<span class="badge badge-sm bg-dark"><i class="fa fa-cloud-download" aria-hidden="true"></i>&nbsp;'+ForDight(data.bt.network.downTotal-se_rx,3)+'</span>');
 
-                    $("#eth").html('<span class="badge badge-sm bg-dark"><i class="glyphicon glyphicon-upload" aria-hidden="true"></i>&nbsp;'+aaa_tx+'</span>&nbsp;'+
+                        $("#eth").html('<span class="badge badge-sm bg-dark"><i class="glyphicon glyphicon-upload" aria-hidden="true"></i>&nbsp;'+aaa_tx+'</span>&nbsp;'+
                         '<span class="badge badge-sm bg-dark"><i class="glyphicon glyphicon-download" aria-hidden="true"></i>&nbsp;'+aaa_rx+'</span>&nbsp;'+
                         '<span class="badge badge-sm bg-dark"><i class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></i>&nbsp;'+ForDight(data.bt.network.upTotal-se_tx,3)+'</span>&nbsp;'+
                         '<span class="badge badge-sm bg-dark"><i class="glyphicon glyphicon-cloud-download" aria-hidden="true"></i>&nbsp;'+ForDight(data.bt.network.downTotal-se_rx,3)+'</span>');
-                    se_tx = data.bt.network.upTotal;
-                    se_rx = data.bt.network.downTotal;
+                        se_tx = data.bt.network.upTotal;
+                        se_rx = data.bt.network.downTotal;
+						setInterval(function(){Pageloader()},<?php echo $ajax_time; ?>*1000);
+					}else{
+						Swal.fire({allowOutsideClick:false,icon:'error',type:'error',title:data.msg,showConfirmButton:true,timer:0});
+					}
                 }
             },
         });
 	};
 	$(function(){
-		Pageloader()
+		Pageloader();
+		Swal.fire({allowOutsideClick:true,imageUrl:'https://ae01.alicdn.com/kf/U05ed7e65d7a749a29bd6164f9d4abe84w.gif',title:"与服务器通讯中...",showConfirmButton:false,timer:3000});
 	});
-    setInterval(function(){Pageloader()},<?php echo $ajax_time; ?>*1000);
     function getNowFormatDate(){
         var date = new Date();
         var seperator1 = "-";
