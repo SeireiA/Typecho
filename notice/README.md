@@ -2,11 +2,12 @@
 Typecho提示插件，已将样式改为toastr
 
 ## 食用教程
+先下载插件放入/usr/plugins/下，改名为notice
 在模板footer.php中的body中加入以下代码
 ```notice
 <!-- 消息提示 -->
-<link href="https://wfblog.net/usr/plugins/notice/toastr.min.css" rel="stylesheet">
-<script src="https://wfblog.net/usr/plugins/notice/toastr.min.js"></script>
+<link href="/usr/plugins/notice/toastr.min.css" rel="stylesheet">
+<script src="/usr/plugins/notice/toastr.min.js"></script>
 <script type="text/javascript">
     toastr.options = {
         closeButton: true, //是否显示关闭按钮
