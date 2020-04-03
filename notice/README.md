@@ -2,7 +2,7 @@
 Typecho提示插件，已将样式改为toastr
 
 ## 食用教程
-先下载插件放入/usr/plugins/下，改名为notice
+先下载插件放入/usr/plugins/下，改名为notice  
 在模板footer.php中的body中加入以下代码
 ```notice
 <!-- 消息提示 -->
